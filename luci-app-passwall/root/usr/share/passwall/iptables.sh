@@ -502,14 +502,14 @@ load_acl() {
 filter_haproxy() {
 	for item in ${haproxy_items}; do
 		local ip=$(get_host_ip ipv4 $(echo $item | awk -F ":" '{print $1}') 1)
-		ipset -q add $IPSET_VPSIPLIST $ip
+		ipset -q add $IPSET_VPSIPLIST $ip timeout 0
 	done
 	echolog "加入负载均衡的节点到ipset[$IPSET_VPSIPLIST]直连完成"
 }
 
 filter_vpsip() {
-	uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSIPLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSIPLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | sed -e "/^$/d" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_VPSIPLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_VPSIPLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
 	echolog "加入所有节点到ipset[$IPSET_VPSIPLIST]直连完成"
 }
 
@@ -624,50 +624,50 @@ dns_hijack() {
 
 add_firewall_rule() {
 	echolog "开始加载防火墙规则..."
-	ipset -! create $IPSET_LANIPLIST nethash maxelem 1048576
-	ipset -! create $IPSET_VPSIPLIST nethash maxelem 1048576
-	ipset -! create $IPSET_SHUNTLIST nethash maxelem 1048576
-	ipset -! create $IPSET_GFW nethash maxelem 1048576
-	ipset -! create $IPSET_CHN nethash maxelem 1048576
-	ipset -! create $IPSET_BLACKLIST nethash maxelem 1048576
-	ipset -! create $IPSET_WHITELIST nethash maxelem 1048576
-	ipset -! create $IPSET_BLOCKLIST nethash maxelem 1048576
+	ipset -! create $IPSET_LANIPLIST nethash maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_VPSIPLIST nethash maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_SHUNTLIST nethash maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_GFW nethash maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_CHN nethash maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_BLACKLIST nethash maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_WHITELIST nethash maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_BLOCKLIST nethash maxelem 1048576 timeout 3600
 
-	ipset -! create $IPSET_LANIPLIST6 nethash family inet6 maxelem 1048576
-	ipset -! create $IPSET_VPSIPLIST6 nethash family inet6 maxelem 1048576
-	ipset -! create $IPSET_SHUNTLIST6 nethash family inet6 maxelem 1048576
-	ipset -! create $IPSET_GFW6 nethash family inet6 maxelem 1048576
-	ipset -! create $IPSET_CHN6 nethash family inet6 maxelem 1048576
-	ipset -! create $IPSET_BLACKLIST6 nethash family inet6 maxelem 1048576
-	ipset -! create $IPSET_WHITELIST6 nethash family inet6 maxelem 1048576
-	ipset -! create $IPSET_BLOCKLIST6 nethash family inet6 maxelem 1048576
+	ipset -! create $IPSET_LANIPLIST6 nethash family inet6 maxelem 104857 timeout 3600
+	ipset -! create $IPSET_VPSIPLIST6 nethash family inet6 maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_SHUNTLIST6 nethash family inet6 maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_GFW6 nethash family inet6 maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_CHN6 nethash family inet6 maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_BLACKLIST6 nethash family inet6 maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_WHITELIST6 nethash family inet6 maxelem 1048576 timeout 3600
+	ipset -! create $IPSET_BLOCKLIST6 nethash family inet6 maxelem 1048576 timeout 3600
 
 	local shunt_ids=$(uci show $CONFIG | grep "=shunt_rules" | awk -F '.' '{print $2}' | awk -F '=' '{print $1}')
 
 	for shunt_id in $shunt_ids; do
-		config_n_get $shunt_id ip_list | tr -s "\r\n" "\n" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/^/add $IPSET_SHUNTLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+		config_n_get $shunt_id ip_list | tr -s "\r\n" "\n" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_SHUNTLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
 	done
 
 	for shunt_id in $shunt_ids; do
-		config_n_get $shunt_id ip_list | tr -s "\r\n" "\n" | sed -e "/^$/d" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "s/^/add $IPSET_SHUNTLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+		config_n_get $shunt_id ip_list | tr -s "\r\n" "\n" | sed -e "/^$/d" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_SHUNTLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
 	done
 
-	cat $RULES_PATH/chnroute | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_CHN &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	cat $RULES_PATH/proxy_ip | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/^/add $IPSET_BLACKLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	cat $RULES_PATH/direct_ip | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/^/add $IPSET_WHITELIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	cat $RULES_PATH/block_ip | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/^/add $IPSET_BLOCKLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/chnroute | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_CHN &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/proxy_ip | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_BLACKLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/direct_ip | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_WHITELIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/block_ip | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | grep -E "(\.((2(5[0-5]|[0-4][0-9]))|[0-1]?[0-9]{1,2})){3}" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_BLOCKLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
 
-	cat $RULES_PATH/chnroute6 | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_CHN6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	cat $RULES_PATH/proxy_ip | tr -s '\n' | grep -v "^#" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_BLACKLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	cat $RULES_PATH/direct_ip | tr -s '\n' | grep -v "^#" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_WHITELIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	cat $RULES_PATH/block_ip | tr -s '\n' | grep -v "^#" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_BLOCKLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/chnroute6 | tr -s '\n' | grep -v "^#" | sed -e "/^$/d" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_CHN6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/proxy_ip | tr -s '\n' | grep -v "^#" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_BLACKLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/direct_ip | tr -s '\n' | grep -v "^#" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_WHITELIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	cat $RULES_PATH/block_ip | tr -s '\n' | grep -v "^#" | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_BLOCKLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
 
 	ipset -! -R <<-EOF
-		$(gen_laniplist | sed -e "s/^/add $IPSET_LANIPLIST /")
+		$(gen_laniplist | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_LANIPLIST /")
 	EOF
 
 	ipset -! -R <<-EOF
-		$(gen_laniplist_6 | sed -e "s/^/add $IPSET_LANIPLIST6 /")
+		$(gen_laniplist_6 | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_LANIPLIST6 /")
 	EOF
 
 	# 忽略特殊IP段
@@ -680,11 +680,11 @@ add_firewall_rule() {
 		#echolog "本机IPv6网段互访直连：${lan_ip6}"
 
 		[ -n "$lan_ip" ] && ipset -! -R <<-EOF
-			$(echo $lan_ip | sed -e "s/ /\n/g" | sed -e "s/^/add $IPSET_LANIPLIST /")
+			$(echo $lan_ip | sed -e "s/ /\n/g" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_LANIPLIST /")
 		EOF
 
 		[ -n "$lan_ip6" ] && ipset -! -R <<-EOF
-			$(echo $lan_ip6 | sed -e "s/ /\n/g" | sed -e "s/^/add $IPSET_LANIPLIST6 /")
+			$(echo $lan_ip6 | sed -e "s/ /\n/g" | sed -e "s/$/ timeout 0/g" | sed -e "s/^/add $IPSET_LANIPLIST6 /")
 		EOF
 	}
 
@@ -692,7 +692,7 @@ add_firewall_rule() {
 	[ -n "$ISP_DNS" ] && {
 		#echolog "处理 ISP DNS 例外..."
 		for ispip in $ISP_DNS; do
-			ipset -! add $IPSET_WHITELIST $ispip >/dev/null 2>&1 &
+			ipset -! add $IPSET_WHITELIST $ispip timeout 0 >/dev/null 2>&1 &
 			#echolog "  - 追加到白名单：${ispip}"
 		done
 	}
@@ -701,7 +701,7 @@ add_firewall_rule() {
 	[ -n "$ISP_DNS" ] && {
 		#echolog "处理 ISP IPv6 DNS 例外..."
 		for ispip6 in $ISP_DNS; do
-			ipset -! add $IPSET_WHITELIST6 $ispip6 >/dev/null 2>&1 &
+			ipset -! add $IPSET_WHITELIST6 $ispip6 timeout 0 >/dev/null 2>&1 &
 			#echolog "  - 追加到白名单：${ispip6}"
 		done
 	}
